@@ -34,7 +34,7 @@ def sg_segment(cyto, blob_threshold, min_sigma, max_sigma, min_sg_size, max_sg_s
     # Filter SGs based on size
     from size_filter import remove_small, remove_large
     filtered_sg = remove_small(mask_sg, min_sg_size)
-    filtered_sg = remove_large(mask_sg, max_sg_size)
+    filtered_sg = remove_large(filtered_sg, max_sg_size)
     
     from skimage.measure import label
     sg_labeled = label(filtered_sg)
