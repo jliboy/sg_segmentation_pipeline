@@ -1,8 +1,9 @@
-import numpy as np 
-from skimage.measure import regionprops, label
 
 def matching_parent(parent_obj, child_obj):
+    import numpy as np 
+    from skimage.measure import regionprops, label  
     # Matching cells to parent nuclei
+    
     # Get region properties
     parent_props = regionprops(parent_obj)
     child_props = regionprops(child_obj)

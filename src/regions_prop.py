@@ -5,7 +5,7 @@ Created on Sun Sep  8 15:46:01 2024
 
 @author: joselito
 """
-import numpy as np
+import numpy as np 
 import pandas as pd
 from skimage.measure import label, regionprops_table
 

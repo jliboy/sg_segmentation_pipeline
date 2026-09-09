@@ -37,16 +37,19 @@ def cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cel
     #bg_substract = white_tophat(rescaled_cyto)
     
     # Applying a gaussian filter and thresholding
+    print("Applying gaussian filter")
     from skimage.filters import threshold_li, threshold_otsu, gaussian, threshold_sauvola, threshold_minimum
     transformed_cyto = gaussian(rescaled_cyto, sigma=gaussian_sigma)
-    
+
+    print("Calculating threshold")
     from skimage.restoration import denoise_bilateral
     #transformed_cyto = denoise_bilateral(transformed_cyto, sigma_color=None, sigma_spatial=5)
     threshold_cyto = threshold_li(transformed_cyto)  # Calculate a threshold value
-    
+
+    print("Thresholding and masking")
     # Thresholding and masking
     mask_cyto = np.zeros(transformed_cyto.shape)
-    mask_cyto[transformed_cyto > threshold_cyto] = 255
+    mask_cyto[transformed_cyto > threshold_cyto] = True
     
     # Dilate cells, fill holes, and remove objects touching the border
     from skimage.morphology import binary_dilation, binary_closing, closing, isotropic_closing
@@ -59,13 +62,16 @@ def cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cel
     from skimage.segmentation import watershed
     from skimage.feature import peak_local_max
     markers = label_nuclei
-    cell_labels = watershed(-transformed_cyto, markers=markers, mask=closed_mask, connectivity=2, watershed_line=True)
+    print("Applying watershed")
+    cell_labels = watershed(-transformed_cyto, markers=markers, mask=closed_mask, connectivity=2, watershed_line=False)
     
     # Filter cells based on size
+    print("Filtering cells based on size")
     from size_filter import remove_small, remove_large
     filtered_mask = remove_small(cell_labels, min_cell_size)
     filtered_mask = remove_large(filtered_mask, max_cell_size)
-    
+
+    print("Labeling filtered mask")
     from skimage.measure import label
     filtered_mask = label(filtered_mask)
 
@@ -90,8 +96,8 @@ def cell_segment(cyto):
     threshold_cyto = threshold_li(transformed_cyto)  # Calculate a threshold value
 
     # Thresholding and masking
-    mask_cyto = np.zeros(transformed_cyto.shape)
-    mask_cyto[transformed_cyto > threshold_cyto] = 255
+    mask_cyto = np.zeros(transformed_cyto.shape, dtype=bool)
+    mask_cyto[transformed_cyto > threshold_cyto] = True
 
     # Filter cells based on size
     from size_filter import remove_small, remove_large

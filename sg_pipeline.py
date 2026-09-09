@@ -12,18 +12,22 @@ root.withdraw()
 directory_path = filedialog.askdirectory()
 images_path = glob.glob(os.path.join(directory_path, "20x*"))
 
+import sys
+sys.path.append('src')
 
-import matplotlib.pyplot as plt
 import numpy as np
 import nd2reader as nd2
 from bit_depth import convert
 import pandas as pd
 from regions_prop import object_count
 
+from skimage.exposure import rescale_intensity
+from skimage.color import label2rgb
+
 
 orig_images = []
-cells = []
-overlays = []
+cell_overlays = []
+sg_overlays = []
 filename = [] #Saving the filename for each segmented image. 
 
 cell_properties = [] #Save properties of cells
@@ -38,11 +42,15 @@ for img in images_path:
     data = nd2.ND2Reader(img)
     filename.append(os.path.basename(img))
 
+    print(f"Processing the following file: {os.path.basename(img)}")
     for t in range(data.sizes['t']): #t corresponds to the time point.
-        
-        for i in range(data.sizes['v']): #i corresponds to the field of view
+        print(f"Time point: {t}/{data.sizes['t']-1}")
 
+        for i in range(30,60): #i corresponds to the field of view
+            # data.sizes['v']
+            print(f"Field of view: {i}/{data.sizes['v']-1}")
             #Nuclear segmentation
+            print("Segmenting nuclei...")
             from nuclear_segmentation import nuclear_segment
             nuclei = data.get_frame_2D(c=0, t=t, v=i) #Read the nuclear channel
             #c=0 correspond to the nuclear channel
@@ -51,6 +59,9 @@ for img in images_path:
             gaussian_nuclei = 10 
             dilation_radius = 5 #Radius for dilation to connect fragmented nuclei
             label_nuclei = nuclear_segment(nuclei, min_nuclear_size, min_distance, gaussian_nuclei, dilation_radius)
+
+            num_nuclei = label_nuclei.max()
+            print("Number of segmented nuclei:", num_nuclei)
             
             #Cell segmentation
             from cell_segmentation import cyto_segment
@@ -63,16 +74,14 @@ for img in images_path:
             closing_radius = 50 #Radius for morphological closing to fill gaps in the cell segmentation
             
             #Cell segmentation using the segmented nuclei as seeds for watershed
+            print("Segmenting cells...")
             segmented_cells = cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cell_size, closing_radius)
 
-            from skimage.exposure import rescale_intensity
-            from skimage.color import label2rgb
+            
             cell_overlay = label2rgb(segmented_cells, image=cytoplasm*50, bg_label=0)
 
             #Save images
-            orig_images.append(cytoplasm)
-            cells.append(segmented_cells)
-            overlays.append(cell_overlay)
+            cell_overlays.append(cell_overlay)
             
             from cell_conditions import protein, treatment
             
@@ -97,6 +106,7 @@ for img in images_path:
             nuclear_properties.append(nuclei_properties[1])
             
             #Segmenting stress granules
+            print("Segmenting stress granules...")
             from sg_segmentation import sg_segment
             
             blob_threshold = 0.075
@@ -105,7 +115,10 @@ for img in images_path:
             min_sg_size = 1
             max_sg_size = 100
             mask_sg = sg_segment(cytoplasm, blob_threshold, min_sigma, max_sigma, min_sg_size, max_sg_size)
-            
+
+            sg_overlay_mask = label2rgb(mask_sg, image=cytoplasm*50, bg_label=0)
+            sg_overlays.append(sg_overlay_mask)
+
             sg_to_cell = matching_parent(mask_sg, segmented_cells)
 
             #Calculating properties
@@ -146,10 +159,10 @@ cells_path = os.path.join(directory_path, 'cell_properties.csv')
 merge_properties.to_csv(cells_path, index=False)
 
 #Save overlays and segmented cells as numpy arrays
-overlays_array = np.array(overlays)
-overlays_path = os.path.join(directory_path, 'cell_overlays.npy')
-#np.save(overlays_path, overlays_array)
+cell_overlays_array = np.array(cell_overlays)
+cell_overlays_path = os.path.join(directory_path, 'cell_overlays.npy')
+np.save(cell_overlays_path, cell_overlays_array)
 
-cells_array = np.array(cells)
-cells_path = os.path.join(directory_path, 'segmented_cells.npy')
-#np.save(cells_path, cells_array)
+sg_overlays_array = np.array(sg_overlays)
+sg_overlays_path = os.path.join(directory_path, 'sg_overlays.npy')
+np.save(sg_overlays_path, sg_overlays_array)
