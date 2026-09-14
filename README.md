@@ -95,7 +95,7 @@ The pipeline writes the following files into the selected directory:
 - `sg_properties.csv` — stress granule-level measurements
 - `cell_overlays.npy` — RGB overlays for segmented cells
 - `sg_overlays.npy` — RGB overlays for detected stress granules
-- `nuclear_overlays_array` — RGB overlays for detected nuclei
+- `nuclear_overlays.npy` — RGB overlays for detected nuclei
 
 ## Important notes
 
