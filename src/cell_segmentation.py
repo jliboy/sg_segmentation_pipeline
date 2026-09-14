@@ -20,26 +20,16 @@ def edge_segment(cyto, label_nuclei):
 
 
 '''Segmentation of cells based on cytoplasmic signal plus nuclear signal'''
-def cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cell_size, closing_radius):
+def cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, closing_radius):
     import numpy as np
     # Convert an image to unsigned byte format, with values in [0, 255].
     from bit_depth import convert
     cyto_int8 = convert(cytoplasm, 0, 255, target_type=np.uint8)
-    
-    # Rescaling data
-    from skimage.exposure import rescale_intensity
-    #rescaled_cyto = rescale_intensity(cyto_int8)  # Stretching image on the full range of pixel intensitites.
-    #rescaled_cyto = cyto_int8*50
-    rescaled_cyto = cyto_int8
-    
-    from skimage.morphology import white_tophat, disk
-    # Top-hat filter to subtract background
-    #bg_substract = white_tophat(rescaled_cyto)
-    
+
     # Applying a gaussian filter and thresholding
     print("Applying gaussian filter")
     from skimage.filters import threshold_li, threshold_otsu, gaussian, threshold_sauvola, threshold_minimum
-    transformed_cyto = gaussian(rescaled_cyto, sigma=gaussian_sigma)
+    transformed_cyto = gaussian(cyto_int8, sigma=gaussian_sigma)
 
     print("Calculating threshold")
     from skimage.restoration import denoise_bilateral
@@ -50,32 +40,25 @@ def cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cel
     # Thresholding and masking
     mask_cyto = np.zeros(transformed_cyto.shape)
     mask_cyto[transformed_cyto > threshold_cyto] = True
-    
+    mask_cyto = np.logical_or(mask_cyto.astype(bool), label_nuclei > 0)
+
     # Dilate cells, fill holes, and remove objects touching the border
-    from skimage.morphology import binary_dilation, binary_closing, closing, isotropic_closing
+    from skimage.morphology import isotropic_closing
     from scipy import ndimage as ndi
-    #dilated_mask = binary_dilation(filtered_mask, mode='max')
-    #filled_mask = ndi.binary_fill_holes(filtered_mask)
     closed_mask = isotropic_closing(mask_cyto, radius = closing_radius)
-    
+
     # apply watershed
     from skimage.segmentation import watershed
-    from skimage.feature import peak_local_max
+    from scipy import ndimage as ndi
+    distance = ndi.distance_transform_edt(closed_mask)
     markers = label_nuclei
     print("Applying watershed")
-    cell_labels = watershed(-transformed_cyto, markers=markers, mask=closed_mask, connectivity=2, watershed_line=False)
-    
-    # Filter cells based on size
-    print("Filtering cells based on size")
-    from size_filter import remove_small, remove_large
-    filtered_mask = remove_small(cell_labels, min_cell_size)
-    filtered_mask = remove_large(filtered_mask, max_cell_size)
+    cell_labels = watershed(-distance, markers=markers, mask=closed_mask, connectivity=2, watershed_line=False)
 
-    print("Labeling filtered mask")
-    from skimage.measure import label
-    filtered_mask = label(filtered_mask)
+    from skimage.segmentation import clear_border
+    cell_labels = clear_border(cell_labels)
 
-    return filtered_mask
+    return cell_labels
 
 
 '''Segmentation of cells based on whole cell signal.

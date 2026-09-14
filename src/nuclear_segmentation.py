@@ -33,8 +33,8 @@ def nuclear_segment(nuclei, min_nuclear_size, min_distance, gaussian_nuclei, dil
     #mask_nuclei = clear_border(mask_nuclei)
 
     # Filter nuclei based on size
-    from size_filter import remove_small, remove_large
-    filtered_nuclei = remove_small(mask_nuclei, min_nuclear_size)
+    from skimage.morphology import remove_small_objects
+    filtered_nuclei = remove_small_objects(mask_nuclei, max_size=min_nuclear_size)
 
     # apply watershed
     from skimage.segmentation import watershed

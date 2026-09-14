@@ -25,7 +25,7 @@ from skimage.exposure import rescale_intensity
 from skimage.color import label2rgb
 
 
-orig_images = []
+nuclear_overlays = []
 cell_overlays = []
 sg_overlays = []
 filename = [] #Saving the filename for each segmented image. 
@@ -46,8 +46,7 @@ for img in images_path:
     for t in range(data.sizes['t']): #t corresponds to the time point.
         print(f"Time point: {t}/{data.sizes['t']-1}")
 
-        for i in range(30,60): #i corresponds to the field of view
-            # data.sizes['v']
+        for i in range(data.sizes['v']): #i corresponds to the field of view
             print(f"Field of view: {i}/{data.sizes['v']-1}")
             #Nuclear segmentation
             print("Segmenting nuclei...")
@@ -68,21 +67,21 @@ for img in images_path:
             
             cytoplasm = data.get_frame_2D(c=1, t=t, v=i)
             #c=1 corresponds to the cytoplasmic channel
-            min_cell_size = 2000
-            max_cell_size = 50000
-            gaussian_sigma = 10
-            closing_radius = 50 #Radius for morphological closing to fill gaps in the cell segmentation
+            gaussian_sigma = 5
+            closing_radius = 10 #Radius for morphological closing to fill gaps in the cell segmentation
             
             #Cell segmentation using the segmented nuclei as seeds for watershed
             print("Segmenting cells...")
-            segmented_cells = cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, min_cell_size, max_cell_size, closing_radius)
+            segmented_cells = cyto_segment(cytoplasm, label_nuclei, gaussian_sigma, closing_radius)
 
             
             cell_overlay = label2rgb(segmented_cells, image=cytoplasm*50, bg_label=0)
+            nuclear_overlay = label2rgb(label_nuclei, image=nuclei, bg_label=0)
 
             #Save images
             cell_overlays.append(cell_overlay)
-            
+            nuclear_overlays.append(nuclear_overlay)
+
             from cell_conditions import protein, treatment
             
             cyto_properties = object_count(segmented_cells, cytoplasm)
@@ -116,7 +115,7 @@ for img in images_path:
             max_sg_size = 100
             mask_sg = sg_segment(cytoplasm, blob_threshold, min_sigma, max_sigma, min_sg_size, max_sg_size)
 
-            sg_overlay_mask = label2rgb(mask_sg, image=cytoplasm*50, bg_label=0)
+            sg_overlay_mask = label2rgb(mask_sg, image=cytoplasm, bg_label=0)
             sg_overlays.append(sg_overlay_mask)
 
             sg_to_cell = matching_parent(mask_sg, segmented_cells)
@@ -159,6 +158,10 @@ cells_path = os.path.join(directory_path, 'cell_properties.csv')
 merge_properties.to_csv(cells_path, index=False)
 
 #Save overlays and segmented cells as numpy arrays
+nuclear_overlays_array = np.array(nuclear_overlays)
+nuclear_overlays_path = os.path.join(directory_path, 'nuclear_overlays.npy')
+np.save(nuclear_overlays_path, nuclear_overlays_array)
+
 cell_overlays_array = np.array(cell_overlays)
 cell_overlays_path = os.path.join(directory_path, 'cell_overlays.npy')
 np.save(cell_overlays_path, cell_overlays_array)

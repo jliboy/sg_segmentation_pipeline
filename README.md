@@ -31,7 +31,6 @@ This project is designed for experiments where each field contains multiple time
   - `size_filter.py` — removes objects below/above size thresholds
   - `bit_depth.py` — intensity normalization utility
 - `cell_conditions.py` — assigns protein identity and treatment labels from image index ranges
-- `sg_data_plotting.R` — simple plotting script for exploring the resulting data
 
 ## Workflow in the main script
 
@@ -96,6 +95,7 @@ The pipeline writes the following files into the selected directory:
 - `sg_properties.csv` — stress granule-level measurements
 - `cell_overlays.npy` — RGB overlays for segmented cells
 - `sg_overlays.npy` — RGB overlays for detected stress granules
+- `nuclear_overlays_array` — RGB overlays for detected nuclei
 
 ## Important notes
 
@@ -111,10 +111,6 @@ The final merged output is constructed as follows:
 - nuclei properties and cell properties are merged by `label`, `field_view`, and `time`
 - stress granule counts are aggregated per cell using `label_cell`, `field_view`, `time`, `protein`, and `treatment`
 - the count is merged back into the cell-level table for downstream statistical analysis
-
-## Plotting
-
-The repository also includes `sg_data_plotting.R`, which provides a simple plotting workflow for exploring the generated CSV files.
 
 ## License
 
